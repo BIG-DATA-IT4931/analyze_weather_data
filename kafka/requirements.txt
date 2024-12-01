@@ -1,0 +1,9 @@
+kafka-python
+confluent_kafka
+requests
+pyspark
+python-dotenv 
+xarray 
+cfgrib
+cdsapi>=0.7.0
+numpy==1.23.5
