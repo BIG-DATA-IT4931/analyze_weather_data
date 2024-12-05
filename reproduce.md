@@ -79,19 +79,43 @@ terraform destroy
 ```
 
 
-## 2. Mage and Data ETL
+## 2. ETL
+### Download service account key json file:
 
-### 2.1. Mage 
+Go to Google cloud platform -> IAM & Admin -> Service account.
+Choose or create service account with the following roles:
+- Storage Object Viewer
+- Storage Object Creator
+- Storage Object Admin
+- BigQuery Data Viewer
+- BigQuery Data Editor
+- BigQuery Job User
 
+Go to Keys and download service account key json file
 
+### Deploy Mage to Cloud Run
 
+See: [link](https://docs.mage.ai/production/deploying-to-cloud/gcp/setup)
 
-### 2.2. From Web to Google Cloud Storage (GCS)
+### Create and schedule ETL pipeline:
 
+#### Copy service account key json file to Mage file system (see ETL/code/Dockerfile)
 
-### 2.3. From Google Cloud Storage to Big Query
+#### Set up Climate Data Store API
+```bash
+cd
+touch .cdsapirc
+nano .cdsapirc
+```
 
+#### Add key
+url: https://cds-beta.climate.copernicus.eu/api
+key: <<your_key>>
 
+#### Create 2 pipeline:
+
+Create weather pipeline (All the measurement except for rain) and rain pipeline (see .py files in ETL/code) to extract data from API and load to GCS.
+Go to Pipeline -> Choose a pipeline -> Trigger to schedule crawl data daily.
 
 ## 3. Analytics Engineering
 
@@ -99,7 +123,7 @@ terraform destroy
 - Go to [this link](link) to see the dashboard.
 
 
-## 4. Spark ETL
+## 4. Spark
 
 
 ## 5. Kafka
@@ -110,6 +134,7 @@ Run the following command to setup Kafka and Zookeeper:
 gcloud compute ssh kafka-instance
 
 #Set up Climate Data Store API
+cd
 touch .cdsapirc
 nano .cdsapirc
 
