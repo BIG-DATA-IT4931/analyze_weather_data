@@ -117,6 +117,8 @@ key: <<your_key>>
 #### Create 2 pipeline:
 
 Create weather pipeline (All the measurement except for rain) and rain pipeline (see .py files in ETL/code) to extract data from API and load to GCS.
+
+
 Go to Pipeline -> Choose a pipeline -> Trigger to schedule crawl data daily.
 
 ## 3. Analytics Engineering
