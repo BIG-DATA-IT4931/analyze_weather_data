@@ -109,8 +109,10 @@ nano .cdsapirc
 ```
 
 #### Add key
+```bash
 url: https://cds-beta.climate.copernicus.eu/api
 key: <<your_key>>
+```
 
 #### Create 2 pipeline:
 
