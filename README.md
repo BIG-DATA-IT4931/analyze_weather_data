@@ -87,7 +87,7 @@
 - Terraform: triển khai hệ thống lên GCP.
 - Streamlit: trực quan hóa dữ liệu.
 
-![](docs/Kientruc.png)
+![](docs/Kientructongquan.png)
 ## 4. Các bước thực hiện
  - Xem chi tiết các bước thực hiện trong [docs](./reproduce.md)
 ## 5. Kết quả
