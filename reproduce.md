@@ -6,7 +6,7 @@
    - [1.2. Terraform](#12-terraform)
 - [2. Mage And Data ETL](#2-mage-and-data-etl)
 - [3. Analytics Engineering](#3-analytics-engineering)
-- [4. Spark ETL](#4-spark-etl)
+- [4. Spark ETL](#4-spark)
 - [5. Kafka](#5-kafka)
 
 
@@ -123,7 +123,7 @@ Go to Pipeline -> Choose a pipeline -> Trigger to schedule crawl data daily.
 
 ## 3. Analytics Engineering
 
-- See the [SQL](link) file for the SQL queries.
+- See the [SQL](https://github.com/BIG-DATA-IT4931/analyze_weather_data/tree/main/big-query) file for the SQL queries.
 - Go to [this link](link) to see the dashboard.
 
 
