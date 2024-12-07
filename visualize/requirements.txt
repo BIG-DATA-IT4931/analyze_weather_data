@@ -9,3 +9,4 @@ protobuf==5.29.1
 scipy==1.14.1
 Shapely==2.0.6
 streamlit==1.39.0
+Pillow==11.0.0
