@@ -129,6 +129,30 @@ Go to Pipeline -> Choose a pipeline -> Trigger to schedule crawl data daily.
 
 ## 4. Spark
 
+Creating new master node:
+```bash
+./sbin/start-master.sh
+```
+Check if the Spark master is running by visiting the Web UI: http://<external-ip>:8080.
+
+Creating new worker node:
+```bash
+./sbin/start-worker.sh spark://<external-ip>:7077
+```
+To confirm that the workers are running:
+```bash
+jps
+```
+Stop master node: 
+```bash
+./sbin/stop-master.sh
+```
+
+Stop worker node:
+```bash
+./sbin/stop-worker.sh
+```
+
 
 ## 5. Kafka
 
