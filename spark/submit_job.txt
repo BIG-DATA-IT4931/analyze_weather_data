@@ -1,0 +1,11 @@
+spark-submit \
+  --jars /home/phuc_0703/learnDE/data-engineering-zoomcamp/05-batch/libs/gcs-connector.jar,/home/phuc_0703/learnDE/data-engineering-zoomcamp/05-batch/libs/bigquery-connector.jar \
+  split_weather.py
+
+spark-submit \
+  --jars /home/phuc_0703/learnDE/data-engineering-zoomcamp/05-batch/libs/gcs-connector.jar,/home/phuc_0703/learnDE/data-engineering-zoomcamp/05-batch/libs/bigquery-connector.jar \
+  merge_data.py
+
+spark-submit \
+  --jars /home/phuc_0703/learnDE/data-engineering-zoomcamp/05-batch/libs/gcs-connector.jar,/home/phuc_0703/learnDE/data-engineering-zoomcamp/05-batch/libs/bigquery-connector.jar \
+  transformation.py
