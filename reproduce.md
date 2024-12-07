@@ -123,7 +123,7 @@ Go to Pipeline -> Choose a pipeline -> Trigger to schedule crawl data daily.
 
 ## 3. Analytics Engineering
 
-- See the [SQL](link) file for the SQL queries.
+- See the [SQL](https://github.com/BIG-DATA-IT4931/analyze_weather_data/tree/main/big-query) file for the SQL queries.
 - Go to [this link](link) to see the dashboard.
 
 
