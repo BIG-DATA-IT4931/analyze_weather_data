@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize
 import plotly.graph_objects as go
 import os
 from google.cloud import bigquery
-from WinterETCSeasonalModel.storm_functions import detect_storms
+from storm_functions import detect_storms
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "./key.json"
 client = bigquery.Client()
