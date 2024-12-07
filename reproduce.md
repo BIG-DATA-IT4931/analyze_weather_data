@@ -6,7 +6,7 @@
    - [1.2. Terraform](#12-terraform)
 - [2. Mage And Data ETL](#2-mage-and-data-etl)
 - [3. Analytics Engineering](#3-analytics-engineering)
-- [4. Spark ETL](#4-spark-etl)
+- [4. Spark ETL](#4-spark)
 - [5. Kafka](#5-kafka)
 
 
