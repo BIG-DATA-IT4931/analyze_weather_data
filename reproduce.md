@@ -128,7 +128,9 @@ Go to Pipeline -> Choose a pipeline -> Trigger to schedule crawl data daily.
 
 
 ## 4. Spark
-
+```bash
+cd ./spark/spark-3.3.2-bin-hadoop3
+```
 Creating new master node:
 ```bash
 ./sbin/start-master.sh
