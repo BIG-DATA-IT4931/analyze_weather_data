@@ -101,11 +101,12 @@ weather_conditions_dimension = df_weather.select(
     F.lit("Unknown").alias("cloud_cover_category")  # Placeholder for now
 ).distinct()
 
+df_weather_repartitioned = weather_conditions_dimension.repartition(49)
 # Output paths
-output_fact = "gs://weather_bigdata_20241/fact_weather_measurements"
-output_time = "gs://weather_bigdata_20241/dim_time"
-output_location = "gs://weather_bigdata_20241/dim_location"
-output_weather_conditions = "gs://weather_bigdata_20241/dim_weather_conditions"
+output_fact = "gs://weather_bigdata_20241/split_dim/fact_weather_measurements"
+output_time = "gs://weather_bigdata_20241/split_dim/dim_time"
+output_location = "gs://weather_bigdata_20241/split_dim/dim_location"
+output_weather_conditions = "gs://weather_bigdata_20241/split_dim/dim_weather_conditions"
 
 # Write to GCS
 fact_weather.write.mode("overwrite").parquet(output_fact)

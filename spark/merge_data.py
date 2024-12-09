@@ -19,8 +19,8 @@ sc = SparkContext(conf=conf)
 
 hadoop_conf = sc._jsc.hadoopConfiguration()
 
-hadoop_conf.set("fs.AbstractFileSystem.gs.impl",  "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
 hadoop_conf.set("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
+hadoop_conf.set("fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
 hadoop_conf.set("fs.gs.auth.service.account.json.keyfile", credentials_location)
 hadoop_conf.set("fs.gs.auth.service.account.enable", "true")
 
