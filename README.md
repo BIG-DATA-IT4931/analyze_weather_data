@@ -91,6 +91,6 @@
 ## 4. Các bước thực hiện
  - Xem chi tiết các bước thực hiện trong [docs](./reproduce.md)
 ## 5. Kết quả
-- [Link to demo](link)
+- [http://192.168.1.12:8501](link)
 
 ![](docs/review.png)
