@@ -91,6 +91,6 @@
 ## 4. Các bước thực hiện
  - Xem chi tiết các bước thực hiện trong [docs](./reproduce.md)
 ## 5. Kết quả
-- [http://192.168.1.12:8501](link)
+- [Link to dashboard](http://192.168.1.12:8501)
 
 ![](docs/review.png)
