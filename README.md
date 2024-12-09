@@ -93,4 +93,6 @@
 ## 5. Kết quả
 - [Link to dashboard](http://192.168.1.12:8501)
 
-![](docs/review.png)
+![](docs/review1.png)
+![](docs/review2.png)
+![](docs/review3.png)
