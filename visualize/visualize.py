@@ -75,67 +75,42 @@ if page == "Daily Analysis":
             # Process data and create a dictionary of 3D arrays for each attribute
             data_dict[attribute] =  np.reshape(data, (24, 65, 41)) 
 
-        msl = data_dict["mean_sea_level_pressure"]
-        lon = np.arange(102, 112.25, 0.25)
-        lat = np.arange(24, 7.75,-0.25)
-        res = 0.25 
-        order = 'topdown' 
-        Npix_min = 9
-        Npix_max = 6000  
-        rel_amp_thresh = 100  
-        d_thresh = 2500  
-        cyc = 'cyclonic'  
-        cut_lon = 1  #
-        cut_lat = 1  
-        globe = False  
-
-        lon_storms = []
-        lat_storms = []
-        amp_storms = []
-        area_storms = []
-        regions = []
-        for i in range(msl.shape[0]):
-            lon_storm, lat_storm, amp_storm, area_storm, region = detect_storms(
-                msl[i, :, :], lon, lat, res, order, Npix_min, Npix_max, rel_amp_thresh, 
-                d_thresh, cyc, cut_lon, cut_lat, globe
-            )
-            lon_storms.append(lon_storm)
-            lat_storms.append(lat_storm)
-            amp_storms.append(amp_storm)
-            area_storms.append(area_storm)
-            regions.append(regions)
+        QUERY_2 = f"""
+            SELECT 
+                * 
+            FROM 
+                `strong-ward-437213-j6.bigdata_20241.storms` 
+            WHERE 
+                time >= '{selected_date_str} 00:00:00 UTC'
+                AND time <= '{selected_date_str} 23:00:00 UTC'
+            ORDER BY
+                time
+         """
         
+        query_job = client.query(QUERY_2)
+        rows = query_job.result()
+
+        any_storms_detected = False
 
         storm_data = {
             "Time": [],
+            "ID": [],
             "Longitude": [],
             "Latitude": [],
+            "Wind Speed": [],
             "Amplitude": [],
             "Area": [],
-        }
+            }
 
-        # Flag to check if any storms are detected
-        any_storms_detected = False
-
-        # Populate the lists with data from each time step
-        for i in range(len(lon_storms)):
-            storm_data["Time"].append(f"{i + 1}:00")
-            
-            if lon_storms[i] and lat_storms[i] and amp_storms[i] and area_storms[i] and regions[i]:
-                # Add storm data if a storm is detected
-                storm_data["Longitude"].append(lon_storms[i][0])
-                storm_data["Latitude"].append(lat_storms[i][0])
-                storm_data["Amplitude"].append(amp_storms[i][0])
-                storm_data["Area"].append(area_storms[i][0])
-                any_storms_detected = True  # Mark as storm detected
-            else:
-                # Indicate no storm if data arrays are empty
-                storm_data["Longitude"].append("No storm")
-                storm_data["Latitude"].append("No storm")
-                storm_data["Amplitude"].append("No storm")
-                storm_data["Area"].append("No storm")
-
-        # Convert the dictionary to a DataFrame for display
+        for row in rows:
+            any_storms_detected = True
+            storm_data["Time"].append(row[0])
+            storm_data["ID"].append(row[1])
+            storm_data["Longitude"].append(row[2])
+            storm_data["Latitude"].append(row[3])
+            storm_data["Wind Speed"].append(row[4])
+            storm_data["Amplitude"].append(row[5])
+            storm_data["Area"].append(row[6])
         storm_df = pd.DataFrame(storm_data)
 
 
@@ -239,6 +214,8 @@ if page == "Daily Analysis":
             st.plotly_chart(fig_line)
 
 
+
+
         
     st.subheader("Detected Storm Information")
     col3, col4 = st.columns([2, 1])
@@ -263,13 +240,15 @@ if page == "Daily Analysis":
             # Vẽ heatmap (giả sử `msl1` có sẵn)
             msl1 = [[0]*100 for _ in range(100)]  # Example placeholder for msl
             plt.imshow(msl1, cmap=custom_cmap, interpolation='lanczos', extent=[102, 112, 8, 24], alpha=0, origin='lower')
+            lon_storms = storm_df["Longitude"]
+            lat_storms = storm_df["Latitude"]
 
             # Vẽ các điểm bão và nối các điểm
             for i in range(1, 24):
                 if lon_storms[i] and lat_storms[i] and lon_storms[i-1] and lat_storms[i-1]:
                     # Vẽ đường nối giữa các điểm bão
-                    ax.plot([lon_storms[i-1][0], lon_storms[i][0]], 
-                            [lat_storms[i-1][0], lat_storms[i][0]], 'b-', marker='o', markersize=1, label=f"Time Step {i}")
+                    ax.plot([lon_storms[i-1], lon_storms[i]], 
+                            [lat_storms[i-1], lat_storms[i]], 'b-', marker='o', markersize=1, label=f"Time Step {i}")
 
             # Vẽ các điểm bão với kích thước nhỏ hơn
             ax.scatter(lon_storms, lat_storms, color='red', marker='x', label='Storm Centers', s=10)  # Giảm kích thước điểm (s=30)
@@ -336,6 +315,30 @@ elif page == "Yearly Analysis":
         df["max_dif_tem"].append(row[3])
         df["tp"].append(row[4]*1000)
 
+    QUERY_2 = f"""
+       SELECT
+            id, month
+        FROM (
+            SELECT 
+                id, 
+                FORMAT_TIMESTAMP('%Y-%m', TIMESTAMP(time)) AS month
+            FROM 
+                `strong-ward-437213-j6.bigdata_20241.storms`
+            WHERE
+                FORMAT_TIMESTAMP('%Y', TIMESTAMP(time)) = '{selected_year}'
+        )
+        GROUP BY
+            id, month
+    """
+
+    query_job = client.query(QUERY_2)
+    rows = query_job.result()
+    storms = {}
+    for row in rows:
+        if row[1] not in storms.keys():
+            storms[row[1]] = 0
+        storms[row[1]]+=1
+    print(storms)
     fig = go.Figure()
 
 # Vẽ các biểu đồ đường
@@ -377,7 +380,8 @@ elif page == "Yearly Analysis":
         title="Temperature and Rainfall Analysis",
         xaxis=dict(
             title="Month",
-            tickvals=df["month"]
+            tickvals=df["month"],
+            tickformat='%Y-%m',
         ),
         yaxis_title="Temperature (°C)",
         yaxis=dict(
@@ -396,9 +400,38 @@ elif page == "Yearly Analysis":
             x=0.05, y=1.5, orientation='h'
         ),
         template="plotly_white",
-        barmode='relative'  # Nếu có nhiều đồ thị cột, tránh chúng chồng lên nhau
+        barmode='relative'
     )
 
+    all_months = [f"{selected_year}-{str(month).zfill(2)}" for month in range(1, 13)]
+
+    # Điền giá trị 0 cho các tháng không xuất hiện trong dữ liệu
+    storm_counts = [storms.get(month, 0) for month in all_months]
+    print(storm_counts)
+
+    # Tạo biểu đồ bằng go.Figure()
+    fig2 = go.Figure()
+
+    # Thêm cột vào biểu đồ
+    fig2.add_trace(go.Bar(
+        x=all_months,
+        y=storm_counts,
+        name='Number of Storms',
+        marker_color='blue'  # Màu sắc của cột
+    ))
+
+    # Tùy chỉnh biểu đồ
+    fig2.update_layout(
+        title='Number of Storms by Month',
+        xaxis_title='Month',
+        yaxis_title='Number of Storms',
+        template='plotly_white',  # Giao diện biểu đồ
+        xaxis=dict(
+            tickformat='%Y-%m',
+            tickmode='array',  # Hiển thị tất cả các giá trị trong danh sách x
+            tickvals=all_months  # Đảm bảo các tháng được hiển thị đầy đủ
+        )
+    )
 
     pie_chart = go.Figure(
         go.Pie(
@@ -415,6 +448,7 @@ elif page == "Yearly Analysis":
     col1, col2 = st.columns([2,1])
     with col1:
         st.plotly_chart(fig)
+        st.plotly_chart(fig2)
     with col2:
         st.plotly_chart(pie_chart)
         
