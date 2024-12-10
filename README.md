@@ -84,6 +84,7 @@
    - Google Cloud Storage (GCS): data lake chứa dữ liệu thô.
    - Google BigQuery: data warehouse chứa dữ liệu đã được làm sạch và biến đổi.
 - Spark: làm sạch, biến đổi và chuẩn bị dữ liệu cho mục đích phân tích
+- Kafka: giả lập streaming data.
 - Terraform: triển khai hệ thống lên GCP.
 - Streamlit: trực quan hóa dữ liệu.
 
