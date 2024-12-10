@@ -5,16 +5,18 @@ from pyspark.context import SparkContext
 import time
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
 import scipy.ndimage as ndimage
 from pyspark.sql import functions as F
-import os
 from pyspark.sql.functions import col, asc, desc
 import numpy as np
-
 from pyspark import SparkConf
+from pyspark.sql import Row
+from pyspark.sql.functions import lit
+from datetime import datetime, timedelta
+import numpy as np
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType
 credentials_location = '/home/phuc_0703/learnDE/data-engineering-zoomcamp/strong-ward-437213-j6-c3ae16d10e5f.json'
 
 conf = SparkConf() \
@@ -238,6 +240,7 @@ def detect_storms(msl, wind_speed, lon, lat, res, order, Npix_min, Npix_max, rel
                 max_wind_speeds = np.append(max_wind_speeds, max_wind_speed)
 
     return lon_storms, lat_storms, amp_storms, max_wind_speeds, area_storms, regions_storm, 
+
 attributes = {
     "U10": "u10",
     "V10": "v10",
@@ -245,134 +248,138 @@ attributes = {
 }
 startTime = "2022-01-01 00:00:00"
 endTime = "2024-10-31 23:00:00"
+
+def process_partition(partition_data):
+    reshaped_batch = {}
+    for attr_name, attr_col in attributes.items():
+        col_data = [row[attr_col] for row in partition_data]
+        dim1 = len(col_data) // (65 * 41)
+        reshaped_batch[attr_col] = np.reshape(col_data, (dim1, 65, 41))
+        
+    msl = reshaped_batch["msl"]
+    lon = np.arange(102, 112.25, 0.25)
+    lat = np.arange(24, 7.75,-0.25)
+    u10 = reshaped_batch["u10"]
+    v10 = reshaped_batch["v10"]
+    wind_speed = np.sqrt(u10*u10+v10*v10)
+    res = 0.25 
+    order = 'topdown' 
+    Npix_min = 9
+    Npix_max = 6000  
+    rel_amp_thresh = 100  
+    d_thresh = 2500  
+    cyc = 'cyclonic'  
+    cut_lon = 1  #
+    cut_lat = 1  
+    globe = False  
+    def haversine_distance(lon1, lat1, lon2, lat2):
+        return np.sqrt((lon1 - lon2) ** 2 + (lat1 - lat2) ** 2)
+    storm_id = None
+    prev_lon, prev_lat = None, None
+    rows = []
+    for i in range(msl.shape[0]):
+        time = datetime.strptime(startTime, "%Y-%m-%d %H:%M:%S") + timedelta(hours=i)
+
+        lon_storms, lat_storms, amp_storms, max_wind_speeds, area_storms, regions_storm = detect_storms(
+            msl[i, :, :], wind_speed[i, :, :], lon, lat, res, order, Npix_min, Npix_max, rel_amp_thresh, 
+            d_thresh, cyc, cut_lon, cut_lat, globe
+        )
+
+        if lon_storms.size == 0:
+            rows.append(Row(
+                time=time.strftime("%Y-%m-%d %H:%M:%S"),
+                id="2024-00",
+                lon_storm=None,
+                lat_storm=None,
+                amp_storm=None,
+                max_wind_speed=None,
+                area_storm=None,
+                regions_storm=None
+            ))
+        else:
+            lon_storm = lon_storms[0]
+            lat_storm = lat_storms[0]
+            amp_storm = amp_storms[0]
+            max_wind_speed = max_wind_speeds[0]
+            area_storm = area_storms[0]
+            regions_storm = np.array(regions_storm)
+            regions_shape = regions_storm.shape
+            regions_storm_str = f"{regions_shape}_{regions_storm.flatten().tolist()}"
+
+            if prev_lon is not None and haversine_distance(lon_storm, lat_storm, prev_lon, prev_lat) < 1:
+                storm_id = f"2024-{storm_count:02d}"
+            else:
+                storm_count += 1
+                storm_id = f"2024-{storm_count:02d}"
+
+            prev_lon, prev_lat = lon_storm, lat_storm
+
+            rows.append(Row(
+                time=time.strftime("%Y-%m-%d %H:%M:%S"),
+                id=storm_id,
+                lon_storm=lon_storm,
+                lat_storm=lat_storm,
+                amp_storm=amp_storm,
+                max_wind_speed=max_wind_speed,
+                area_storm=area_storm,
+                regions_storm=regions_storm_str
+            ))
+
+    schema = StructType([
+        StructField("time", TimestampType(), True),
+        StructField("id", StringType(), True),
+        StructField("lon_storm", DoubleType(), True),
+        StructField("lat_storm", DoubleType(), True),
+        StructField("amp_storm", DoubleType(), True),
+        StructField("max_wind_speed", DoubleType(), True),
+        StructField("area_storm", DoubleType(), True),
+        StructField("regions_storm", StringType(), True)
+    ])
+
+    rows_with_converted_time = [
+        Row(
+            time=datetime.strptime(row.time, "%Y-%m-%d %H:%M:%S"),
+            id=row.id,
+            lon_storm=float(row.lon_storm) if row.lon_storm is not None else None,
+            lat_storm=float(row.lat_storm) if row.lat_storm is not None else None,
+            amp_storm=float(row.amp_storm) if row.amp_storm is not None else None,
+            max_wind_speed=float(row.max_wind_speed) if row.max_wind_speed is not None else None,
+            area_storm=float(row.area_storm) if row.area_storm is not None else None,
+            regions_storm=row.regions_storm
+        )
+        for row in rows
+    ]
+
+    schema = StructType([
+        StructField("time", TimestampType(), True),
+        StructField("id", StringType(), True),
+        StructField("lon_storm", DoubleType(), True),
+        StructField("lat_storm", DoubleType(), True),
+        StructField("amp_storm", DoubleType(), True),
+        StructField("max_wind_speed", DoubleType(), True),
+        StructField("area_storm", DoubleType(), True),
+        StructField("regions_storm", StringType(), True)
+    ])
+
+    storms_df = spark.createDataFrame(rows_with_converted_time, schema=schema)
+
+    storms_df.show(truncate=False)
+    table_name = "strong-ward-437213-j6.bigdata_20241.storms"
+    storms_df.write.format("bigquery") \
+        .option("table", table_name) \
+        .option("writeMethod", "direct") \
+        .mode("append") \
+        .save()
+
+df_weather_main = (
+    spark.read.option("timestampAsString", "true")
+    .parquet("gs://weather_bigdata_20241/weather_all_main/*")
+)
+
 columns = ["time", "latitude", "longitude"] + list(attributes.values())
 filtered_df = df_weather_main.filter(
     (col("time") >= startTime) & (col("time") <= endTime)
 ).select(*columns).orderBy(asc("time"), desc("latitude"), asc("longitude"))
-data = filtered_df.collect()
-reshaped_data = {}
-for attr_name, attr_col in attributes.items():
-    col_data = [row[attr_col] for row in data]
-    dim1 = len(col_data) // (65 * 41)
-    reshaped_data[attr_col] = np.reshape(col_data, (dim1, 65, 41))
-    
-from pyspark.sql import Row
-from pyspark.sql.functions import lit
-from datetime import datetime, timedelta
-import numpy as np
 
-msl = reshaped_data["msl"]
-lon = np.arange(102, 112.25, 0.25)
-lat = np.arange(24, 7.75,-0.25)
-u10 = reshaped_data["u10"]
-v10 = reshaped_data["v10"]
-wind_speed = np.sqrt(u10*u10+v10*v10)
-res = 0.25 
-order = 'topdown' 
-Npix_min = 9
-Npix_max = 6000  
-rel_amp_thresh = 100  
-d_thresh = 2500  
-cyc = 'cyclonic'  
-cut_lon = 1  #
-cut_lat = 1  
-globe = False  
-def haversine_distance(lon1, lat1, lon2, lat2):
-    return np.sqrt((lon1 - lon2) ** 2 + (lat1 - lat2) ** 2)
-storm_id = None
-prev_lon, prev_lat = None, None
-rows = []
-for i in range(msl.shape[0]):
-    time = datetime.strptime(startTime, "%Y-%m-%d %H:%M:%S") + timedelta(hours=i)
+filtered_df.rdd.foreachPartition(lambda partition: process_partition(partition))
 
-    lon_storms, lat_storms, amp_storms, max_wind_speeds, area_storms, regions_storm = detect_storms(
-        msl[i, :, :], wind_speed[i, :, :], lon, lat, res, order, Npix_min, Npix_max, rel_amp_thresh, 
-        d_thresh, cyc, cut_lon, cut_lat, globe
-    )
-
-    if lon_storms.size == 0:
-        rows.append(Row(
-            time=time.strftime("%Y-%m-%d %H:%M:%S"),
-            id="2024-00",
-            lon_storm=None,
-            lat_storm=None,
-            amp_storm=None,
-            max_wind_speed=None,
-            area_storm=None,
-            regions_storm=None
-        ))
-    else:
-        lon_storm = lon_storms[0]
-        lat_storm = lat_storms[0]
-        amp_storm = amp_storms[0]
-        max_wind_speed = max_wind_speeds[0]
-        area_storm = area_storms[0]
-        regions_storm = np.array(regions_storm)
-        regions_shape = regions_storm.shape
-        regions_storm_str = f"{regions_shape}_{regions_storm.flatten().tolist()}"
-
-        if prev_lon is not None and haversine_distance(lon_storm, lat_storm, prev_lon, prev_lat) < 1:
-            storm_id = f"2024-{storm_count:02d}"
-        else:
-            storm_count += 1
-            storm_id = f"2024-{storm_count:02d}"
-
-        prev_lon, prev_lat = lon_storm, lat_storm
-
-        rows.append(Row(
-            time=time.strftime("%Y-%m-%d %H:%M:%S"),
-            id=storm_id,
-            lon_storm=lon_storm,
-            lat_storm=lat_storm,
-            amp_storm=amp_storm,
-            max_wind_speed=max_wind_speed,
-            area_storm=area_storm,
-            regions_storm=regions_storm_str
-        ))
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType
-
-schema = StructType([
-    StructField("time", TimestampType(), True),
-    StructField("id", StringType(), True),
-    StructField("lon_storm", DoubleType(), True),
-    StructField("lat_storm", DoubleType(), True),
-    StructField("amp_storm", DoubleType(), True),
-    StructField("max_wind_speed", DoubleType(), True),
-    StructField("area_storm", DoubleType(), True),
-    StructField("regions_storm", StringType(), True)
-])
-
-rows_with_converted_time = [
-    Row(
-        time=datetime.strptime(row.time, "%Y-%m-%d %H:%M:%S"),
-        id=row.id,
-        lon_storm=float(row.lon_storm) if row.lon_storm is not None else None,
-        lat_storm=float(row.lat_storm) if row.lat_storm is not None else None,
-        amp_storm=float(row.amp_storm) if row.amp_storm is not None else None,
-        max_wind_speed=float(row.max_wind_speed) if row.max_wind_speed is not None else None,
-        area_storm=float(row.area_storm) if row.area_storm is not None else None,
-        regions_storm=row.regions_storm
-    )
-    for row in rows
-]
-
-schema = StructType([
-    StructField("time", TimestampType(), True),
-    StructField("id", StringType(), True),
-    StructField("lon_storm", DoubleType(), True),
-    StructField("lat_storm", DoubleType(), True),
-    StructField("amp_storm", DoubleType(), True),
-    StructField("max_wind_speed", DoubleType(), True),
-    StructField("area_storm", DoubleType(), True),
-    StructField("regions_storm", StringType(), True)
-])
-
-storms_df = spark.createDataFrame(rows_with_converted_time, schema=schema)
-
-storms_df.show(truncate=False)
-table_name = "strong-ward-437213-j6.bigdata_20241.storm_detection_by_pnh"
-storms_df.write.format("bigquery") \
-    .option("table", table_name) \
-    .option("writeMethod", "direct") \
-    .mode("append") \
-    .save()

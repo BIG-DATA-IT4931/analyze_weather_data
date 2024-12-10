@@ -46,3 +46,9 @@ echo "docker-compose version..."
 docker-compose --version
 
 mkdir -p ~/.google/credentials
+
+mkdir -p libs
+cd libs
+wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop3-latest.jar -O gcs-connector.jar
+wget https://repo1.maven.org/maven2/com/google/cloud/spark/spark-bigquery-with-dependencies_2.12/0.31.1/spark-bigquery-with-dependencies_2.12-0.31.1.jar -O bigquery-connector.jar
+
