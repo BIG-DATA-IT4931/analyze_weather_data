@@ -77,16 +77,14 @@ df_rain_filtered = df_rain.filter(df_rain.tp.isNotNull())
 
 from pyspark.sql.functions import col
 
-# Thực hiện JOIN với điều kiện
 df_joined = df_rain_filtered.join(
     df_weather,
     (df_rain_filtered.latitude == df_weather.latitude) &
     (df_rain_filtered.longitude == df_weather.longitude) &
     (df_rain_filtered.valid_time == df_weather.time),
-    "inner"  # Chỉ lấy các bản ghi khớp nhau (INNER JOIN)
+    "inner"
 )
 
-# Chọn các cột cần thiết và đổi tên nếu cần
 df_joined = df_joined.select(
     df_rain_filtered.latitude.alias("latitude"),
     df_rain_filtered.longitude.alias("longitude"),
@@ -106,9 +104,13 @@ df_joined = df_joined.select(
     df_rain_filtered.tp
 )
 
-df_joined = df_joined.withColumn("time", from_unixtime(col("time") / 1_000_000_000).cast("timestamp"))
-df_joined = df_joined.withColumn("d2m", F.col("d2m") - 273.15) \
-                        .withColumn("t2m", F.col("t2m") - 273.15)
+df_joined = df_joined.withColumn(
+    "time", from_unixtime(col("time") / 1_000_000_000).cast("timestamp")
+).withColumn(
+    "d2m", F.col("d2m") - 273.15
+).withColumn(
+    "t2m", F.col("t2m") - 273.15
+)
 
 df_joined_repartitioned = df_joined.repartition(49)
 
