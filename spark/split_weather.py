@@ -6,10 +6,8 @@ from pyspark.sql.types import LongType, StructType, StructField, FloatType, Inte
 from pyspark.sql.functions import col, from_unixtime, year, month, dayofmonth, hour, monotonically_increasing_id
 from pyspark.sql import functions as F
 
-# Path to credentials
 credentials_location = '/home/phuc_0703/learnDE/data-engineering-zoomcamp/strong-ward-437213-j6-c3ae16d10e5f.json'
 
-# Spark Configuration
 conf = SparkConf() \
     .setMaster('spark://dataengineer.europe-west1-b.c.strong-ward-437213-j6.internal:7077') \
     .setAppName('weather_split') \
@@ -19,19 +17,16 @@ conf = SparkConf() \
 
 sc = SparkContext(conf=conf)
 
-# Configure Hadoop for GCS
 hadoop_conf = sc._jsc.hadoopConfiguration()
 hadoop_conf.set("fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
 hadoop_conf.set("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
 hadoop_conf.set("fs.gs.auth.service.account.json.keyfile", credentials_location)
 hadoop_conf.set("fs.gs.auth.service.account.enable", "true")
 
-# Create SparkSession
 spark = SparkSession.builder \
     .config(conf=sc.getConf()) \
     .getOrCreate()
 
-# Schema for weather data
 schema_weather = StructType([
     StructField("time", LongType(), True),
     StructField("latitude", DoubleType(), True),
@@ -52,17 +47,15 @@ schema_weather = StructType([
     StructField("tclw", FloatType(), True)
 ])
 
-# Read weather data
 df_weather = spark.read.option("basePath", "gs://weather_bigdata_20241/other_data/") \
                        .schema(schema_weather) \
                        .parquet("gs://weather_bigdata_20241/other_data/*")
 
-# 1. Fact Table: Weather Measurements
 fact_weather = df_weather.select(
     monotonically_increasing_id().alias("fact_id"),
     col("time").alias("time_id"),
     F.concat_ws(",", col("latitude"), col("longitude")).alias("location_id"),
-    F.lit(None).alias("weather_id"),  # Placeholder for weather conditions
+    F.lit(None).alias("weather_id"),
     col("u10").alias("u_wind"),
     col("v10").alias("v_wind"),
     col("d2m").alias("dewpoint_temp"),
@@ -75,7 +68,6 @@ fact_weather = df_weather.select(
     col("tclw").alias("cloud_liquid_water_content")
 )
 
-# 2. Dimension Table: Time
 time_dimension = df_weather.select(
     col("time").alias("time_id"),
     from_unixtime(col("time")).alias("time"),
@@ -85,30 +77,27 @@ time_dimension = df_weather.select(
     hour(from_unixtime(col("time"))).alias("hour")
 ).distinct()
 
-# 3. Dimension Table: Location
 location_dimension = df_weather.select(
     F.concat_ws(",", col("latitude"), col("longitude")).alias("location_id"),
     col("latitude"),
     col("longitude"),
-    F.lit("Unknown Region").alias("region")  # Placeholder for now
+    F.lit("Unknown Region").alias("region")
 ).distinct()
 
-# 4. Dimension Table: Weather Conditions
 weather_conditions_dimension = df_weather.select(
     monotonically_increasing_id().alias("weather_id"),
-    F.lit("Unknown").alias("weather_type"),  # Placeholder for now
-    F.lit("Unknown").alias("wind_category"),  # Placeholder for now
-    F.lit("Unknown").alias("cloud_cover_category")  # Placeholder for now
+    F.lit("Unknown").alias("weather_type"),
+    F.lit("Unknown").alias("wind_category"),
+    F.lit("Unknown").alias("cloud_cover_category")
 ).distinct()
 
 df_weather_repartitioned = weather_conditions_dimension.repartition(49)
-# Output paths
+
 output_fact = "gs://weather_bigdata_20241/split_dim/fact_weather_measurements"
 output_time = "gs://weather_bigdata_20241/split_dim/dim_time"
 output_location = "gs://weather_bigdata_20241/split_dim/dim_location"
 output_weather_conditions = "gs://weather_bigdata_20241/split_dim/dim_weather_conditions"
 
-# Write to GCS
 fact_weather.write.mode("overwrite").parquet(output_fact)
 time_dimension.write.mode("overwrite").parquet(output_time)
 location_dimension.write.mode("overwrite").parquet(output_location)

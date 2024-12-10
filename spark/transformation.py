@@ -5,10 +5,8 @@ from pyspark.context import SparkContext
 from pyspark.sql import functions as F
 from pyspark.sql.functions import col, from_unixtime
 
-# Define the path to the credentials file
 credentials_location = '/home/phuc_0703/learnDE/data-engineering-zoomcamp/strong-ward-437213-j6-c3ae16d10e5f.json'
 
-# Set up the Spark configuration
 conf = SparkConf() \
     .setMaster('spark://dataengineer.europe-west1-b.c.strong-ward-437213-j6.internal:7077') \
     .setAppName('transformation') \
@@ -16,11 +14,9 @@ conf = SparkConf() \
     .set("spark.hadoop.google.cloud.auth.service.account.enable", "true") \
     .set("spark.hadoop.google.cloud.auth.service.account.json.keyfile", credentials_location)
 
-# Initialize SparkContext and SparkSession
 sc = SparkContext(conf=conf)
 spark = SparkSession.builder.config(conf=sc.getConf()).getOrCreate()
 
-# Load the merged data from the "weather_all" directory (partitioned by year, month, and day)
 df_weather_all = spark.read.parquet("gs://weather_bigdata_20241/weather_all")
 df_weather_main = df_weather_all
 df_weather_main = df_weather_main.withColumn("wind_speed", F.sqrt(F.col("u10")**2 + F.col("v10")**2))
@@ -48,13 +44,12 @@ df_weather_main = df_weather_main.withColumn(
         180 + (180 / math.pi) * F.atan2(F.col("u10"), F.col("v10"))
     )
 )
-# Define the latitude and longitude range filters
+
 df_weather_main = df_weather_main.filter(
     (F.col("latitude") >= 8) & (F.col("latitude") <= 24) &
     (F.col("longitude") >= 102) & (F.col("longitude") <= 112)
 )
 
-# Select the date and calculate total precipitation
 df_weather_main = df_weather_main.groupBy(F.to_date("valid_time").alias("date")) \
     .agg(F.sum("tp").alias("total_precipitation")) \
     .orderBy("date")
@@ -74,5 +69,4 @@ df_result.write \
     .mode("overwrite") \
     .parquet(output_path)
 
-# Stop the SparkContext
 sc.stop()
